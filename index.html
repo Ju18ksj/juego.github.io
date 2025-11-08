@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laberinto - Juego Simple</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #1a1a1a;
+            overflow: hidden;
+            padding: 10px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h1 {
+            color: #fff;
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #maze {
+            position: relative;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: #2a2a2a;
+            cursor: crosshair;
+            touch-action: none;
+            width: 100%;
+            aspect-ratio: 3 / 2;
+            max-width: 600px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 20px;
+            }
+
+            .instructions {
+                font-size: 12px;
+                padding: 10px 14px;
+            }
+
+            #maze {
+                aspect-ratio: 4 / 5;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 18px;
+            }
+
+            .instructions {
+                font-size: 11px;
+                padding: 8px 12px;
+            }
+        }
+
+        .wall {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 2px;
+        }
+
+        .start {
+            position: absolute;
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 11px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 150, 255, 0.4);
+        }
+
+        .end {
+            position: absolute;
+            background: linear-gradient(135deg, #ff4e50, #f9d423);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 11px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(255, 78, 80, 0.4);
+        }
+
+        .player {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #00ff88;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10;
+            transition: all 0.05s linear;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+        }
+
+        #message {
+            font-size: 15px;
+            font-weight: 500;
+            min-height: 24px;
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+        }
+
+        .success { color: #00ff88; }
+        .error { color: #ff4e50; }
+
+        #jumpscare {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: shake 0.5s infinite;
+        }
+
+        #jumpscare img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            cursor: pointer;
+        }
+
+        #jumpscare::after {
+            content: 'Toca para continuar...';
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            animation: blink 1.2s infinite;
+            padding: 12px 24px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 25px;
+            backdrop-filter: blur(5px);
+        }
+
+        @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.4; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            10% { transform: translate(-8px, -8px) rotate(-1deg); }
+            20% { transform: translate(8px, 8px) rotate(1deg); }
+            30% { transform: translate(-8px, 8px) rotate(-1deg); }
+            40% { transform: translate(8px, -8px) rotate(1deg); }
+            50% { transform: translate(-8px, -8px) rotate(-1deg); }
+            60% { transform: translate(8px, 8px) rotate(1deg); }
+            70% { transform: translate(-8px, 8px) rotate(-1deg); }
+            80% { transform: translate(8px, -8px) rotate(1deg); }
+            90% { transform: translate(-8px, -8px) rotate(-1deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Laberinto del Terror</h1>
+        <div class="instructions">
+            <strong>Instrucciones:</strong> Mueve el dedo (móvil) o mouse (PC) por el laberinto desde INICIO hasta FIN.<br>
+            ⚠️ ¡No toques las paredes negras o tendrás que empezar de nuevo!
+        </div>
+        
+        <div id="maze">
+            <div class="start" style="left: 2%; top: 2%; width: 16%; height: 10%;">INICIO</div>
+            <div class="end" style="right: 2%; bottom: 2%; width: 16%; height: 10%;">FIN</div>
+            
+            <!-- Paredes del laberinto -->
+            <div class="wall" style="left: 0; top: 12%; width: 25%; height: 3%;"></div>
+            <div class="wall" style="left: 22%; top: 12%; width: 3%; height: 30%;"></div>
+            <div class="wall" style="left: 33%; top: 0; width: 3%; height: 25%;"></div>
+            <div class="wall" style="left: 33%; top: 21%; width: 25%; height: 3%;"></div>
+            <div class="wall" style="left: 55%; top: 21%; width: 3%; height: 25%;"></div>
+            <div class="wall" style="left: 41%; top: 42%; width: 17%; height: 3%;"></div>
+            <div class="wall" style="left: 16%; top: 30%; width: 3%; height: 25%;"></div>
+            <div class="wall" style="left: 0; top: 51%; width: 19%; height: 3%;"></div>
+            <div class="wall" style="left: 25%; top: 51%; width: 19%; height: 3%;"></div>
+            <div class="wall" style="left: 66%; top: 0; width: 3%; height: 37%;"></div>
+            <div class="wall" style="left: 66%; top: 33%; width: 17%; height: 3%;"></div>
+            <div class="wall" style="left: 80%; top: 33%; width: 3%; height: 25%;"></div>
+            <div class="wall" style="left: 66%; top: 55%; width: 17%; height: 3%;"></div>
+            <div class="wall" style="left: 8%; top: 67%; width: 33%; height: 3%;"></div>
+            <div class="wall" style="left: 39%; top: 67%; width: 3%; height: 20%;"></div>
+            <div class="wall" style="left: 50%; top: 75%; width: 17%; height: 3%;"></div>
+            <div class="wall" style="left: 64%; top: 75%; width: 3%; height: 25%;"></div>
+            
+            <div class="player" id="player"></div>
+        </div>
+        
+        <div id="message"></div>
+    </div>
+
+    <div id="jumpscare">
+        <img src="https://www.xpaja.net/views/albums/2022/11/the-best-xxx-pack-to-masturbate/9.jpg" alt="SUSTO">
+    </div>
+
+    <audio id="scareSound" preload="auto">
+        <source src="https://www.myinstants.com/media/sounds/bala-bala.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const maze = document.getElementById('maze');
+        const player = document.getElementById('player');
+        const message = document.getElementById('message');
+        const jumpscare = document.getElementById('jumpscare');
+        const scareSound = document.getElementById('scareSound');
+        const walls = document.querySelectorAll('.wall');
+        const startZone = document.querySelector('.start');
+        const endZone = document.querySelector('.end');
+
+        let gameStarted = false;
+        let gameCompleted = false;
+        let mazeRect = maze.getBoundingClientRect();
+
+        window.addEventListener('resize', () => {
+            mazeRect = maze.getBoundingClientRect();
+        });
+
+        function checkCollision(x, y) {
+            const playerRect = {
+                left: x - 7,
+                right: x + 7,
+                top: y - 7,
+                bottom: y + 7
+            };
+
+            for (let wall of walls) {
+                const wallRect = wall.getBoundingClientRect();
+                const mazeRect = maze.getBoundingClientRect();
+                
+                const relativeWall = {
+                    left: wallRect.left - mazeRect.left,
+                    right: wallRect.right - mazeRect.left,
+                    top: wallRect.top - mazeRect.top,
+                    bottom: wallRect.bottom - mazeRect.top
+                };
+
+                if (playerRect.right > relativeWall.left &&
+                    playerRect.left < relativeWall.right &&
+                    playerRect.bottom > relativeWall.top &&
+                    playerRect.top < relativeWall.bottom) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function checkInBounds(x, y) {
+            return x >= 0 && x <= mazeRect.width && y >= 0 && y <= mazeRect.height;
+        }
+
+        function isInZone(x, y, zone) {
+            const zoneRect = zone.getBoundingClientRect();
+            const mazeRect = maze.getBoundingClientRect();
+            
+            const relativeZone = {
+                left: zoneRect.left - mazeRect.left,
+                right: zoneRect.right - mazeRect.left,
+                top: zoneRect.top - mazeRect.top,
+                bottom: zoneRect.bottom - mazeRect.top
+            };
+
+            return x >= relativeZone.left && 
+                   x <= relativeZone.right && 
+                   y >= relativeZone.top && 
+                   y <= relativeZone.bottom;
+        }
+
+        function resetGame() {
+            gameStarted = false;
+            gameCompleted = false;
+            player.style.display = 'none';
+            message.textContent = '';
+            message.className = '';
+        }
+
+        function showJumpscare() {
+            jumpscare.style.display = 'flex';
+            scareSound.volume = 1.0;
+            scareSound.play().catch(e => console.log('Audio error:', e));
+        }
+
+        jumpscare.addEventListener('click', () => {
+            window.location.href = 'http://youtube.com/watch?v=2z98-WNPgyA';
+        });
+
+        function handleMove(clientX, clientY) {
+            if (gameCompleted) return;
+
+            const rect = maze.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            if (!gameStarted) {
+                if (isInZone(x, y, startZone)) {
+                    gameStarted = true;
+                    player.style.display = 'block';
+                    message.textContent = '¡Adelante! Llega hasta el FIN';
+                    message.className = '';
+                }
+                return;
+            }
+
+            if (!checkInBounds(x, y)) {
+                message.textContent = '¡Saliste del laberinto! Vuelve a empezar';
+                message.className = 'error';
+                resetGame();
+                return;
+            }
+
+            if (checkCollision(x, y)) {
+                message.textContent = '¡Tocaste una pared! Intenta de nuevo';
+                message.className = 'error';
+                resetGame();
+                return;
+            }
+
+            player.style.left = (x - 7) + 'px';
+            player.style.top = (y - 7) + 'px';
+
+            if (isInZone(x, y, endZone)) {
+                gameCompleted = true;
+                message.textContent = '¡FELICIDADES! Completaste el laberinto...';
+                message.className = 'success';
+                
+                setTimeout(() => {
+                    showJumpscare();
+                }, 1000);
+            }
+        }
+
+        maze.addEventListener('mousemove', (e) => {
+            handleMove(e.clientX, e.clientY);
+        });
+
+        maze.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleMove(touch.clientX, touch.clientY);
+        });
+
+        maze.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleMove(touch.clientX, touch.clientY);
+        });
+
+        maze.addEventListener('mouseleave', () => {
+            if (gameStarted && !gameCompleted) {
+                message.textContent = '¡Saliste del laberinto! Vuelve a empezar';
+                message.className = 'error';
+                resetGame();
+            }
+        });
+
+        maze.addEventListener('touchend', () => {
+            if (gameStarted && !gameCompleted) {
+                message.textContent = '¡No sueltes el dedo! Vuelve a empezar';
+                message.className = 'error';
+                resetGame();
+            }
+        });
+    </script>
+</body>
+</html>
